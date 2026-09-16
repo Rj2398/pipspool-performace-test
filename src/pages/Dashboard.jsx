@@ -1,0 +1,183 @@
+import React, { useEffect, useState } from "react";
+import Cookies from "js-cookie";
+import Header from "../components/Header";
+import { Link, useNavigate } from "react-router-dom";
+import Pagination from "../commanComponents/Pagination";
+import { useDispatch, useSelector } from "react-redux";
+// import { selectEntity } from "../redux/slice/entitySlice";
+
+const Dashboard = () => {
+  const navigate = useNavigate();
+  // const dispatch = useDispatch();
+  const selectedEntity = useSelector((state) => state.entity.selected);
+  const projectData = useSelector((state) => state?.entity?.project);
+  const loading = useSelector((state) => state?.entity?.loading);
+  // const paginationData = useSelector((state) => state?.entity?.projectPagination);
+
+  // const itemsPerPage = paginationData?.per_page || 10;
+  const itemsPerPage = 10;
+
+  const [background, setbackground] = useState('')
+  const [projects, setProjects] = useState([]);
+  // const [currentPage, setCurrentPage] = useState(
+  //   Number(localStorage.getItem("currentPage")) || 1
+  // );
+  const [currentPage, setCurrentPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [filteredProjects, setFilteredProjects] = useState([]);
+
+  useEffect(() => {
+    setProjects(projectData);
+  }, [projectData]);
+
+  // useEffect(() => {
+  //   if (selectedEntity?.id) {
+  //     //  dispatch(selectEntity({ entity_id: selectedEntity.id, pageNo: currentPage, limit: itemsPerPage }));
+  //     // dispatch(selectEntity({ entity_id: selectedEntity.id }));
+  //   }
+  // }, [selectedEntity?.id, dispatch]);
+
+
+  const handleSearch = (e) => {
+    const value = e.target.value;
+    setSearch(value);
+  };
+
+  useEffect(() => {
+    const themColor = selectedEntity?.entity_secondary_color || JSON.parse(localStorage.getItem('selectedEntity'));
+    setbackground(themColor)
+  }, [selectedEntity]);
+
+  useEffect(() => {
+    const token = Cookies.get("pipeSpool");
+    if (token) {
+      navigate("/dashboard");
+    } else {
+      navigate("/");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!search.trim() || search.trim().length < 2) {
+      setFilteredProjects(projects);
+      return;
+    }
+
+
+    const handler = setTimeout(() => {
+      const filter = projects.filter((item) =>
+        item?.project_name?.toLowerCase().includes(search.toLowerCase()),
+      );
+      setFilteredProjects(filter);
+    }, 500);
+
+    return () => clearTimeout(handler);
+  }, [search, projects]);
+
+  // const totalItems = paginationData?.total || filteredProjects?.length || 0;
+  // const currentItems = filteredProjects;
+
+  console.log("filteredProjects", filteredProjects)
+  const totalItems = filteredProjects?.length;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentItems = filteredProjects?.slice(
+    startIndex,
+    startIndex + itemsPerPage,
+  );
+
+
+
+  return (
+    <>
+      <div className="page-wrapper">
+        <Header />
+        <main className="projects-page">
+          <div className="container-fluid">
+            <div className="row">
+              <div className="col-lg-6 col-md-6">
+                <div className="page-heading">
+                  <h1>
+                    {projects?.[0]?.entity?.entity_name || "FabricationTech"}
+                  </h1>
+                  <p>Select a project to view spools.</p>
+                </div>
+              </div>
+              <div className="col-lg-6 col-md-6">
+                <div className="page-search">
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={handleSearch}
+                    placeholder="Search by project name…"
+                    className="srch-field"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="container-fluid">
+            <div className="grid-wrap">
+              <div className="row">
+                {loading && projects?.length === 0 ? (
+                  <span className="d-block text-center mt-5" style={{ height: '50vh' }}>
+                    {/* <td colSpan={7} style={{ textAlign: "center", padding: "20px", height: '50vh' }}> */}
+                    <div className="spinner-border" role="status" style={{ color: background || '#000', height: '50px', width: '50px' }}>
+                      <span className="visually-hidden" >Loading...</span>
+                    </div>
+                    {/* </td> */}
+                  </span>
+                ) : currentItems?.length > 0 ? (
+                  currentItems.map((item) => (
+                    <div className="col-lg-4 col-md-6" key={item.id}>
+                      <div className="project-item">
+                        <h4>
+                          <i
+                            className="hgi hgi-stroke hgi-folder-02"
+                            style={{ color: background }}
+                          ></i>
+                          {item.project_name}
+                        </h4>
+                        <div className="btm">
+                          <p>
+                            Total Spools <b>{item.spools_count}</b>
+                          </p>
+                          <Link
+                            to="/spool"
+                            state={{ id: item?.id }}
+                            className="primary-cta"
+                          >
+                            Open{" "}
+                            <i className="fa-light fa-arrow-right-long"></i>
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <span className="d-block text-center mt-5">
+                    No projects found
+                  </span>
+                )}
+              </div>
+
+              <div className="row">
+                <div className="col-lg-12">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalItems={totalItems}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setCurrentPage}
+                    showResult={false}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </>
+  );
+};
+
+export default React.memo(Dashboard);
